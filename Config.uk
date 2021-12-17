@@ -1,0 +1,10 @@
+menuconfig APPSMARTCONTRACTSIMPLE_DEPENDENCIES
+	bool "Simple smart contract application"
+	default y
+	select PLAT_KVM
+	select LIBNEWLIBC
+	select LIBLWIP
+	select LIBUKLIBPARARM
+	select LIBUKARGPARSE
+	select LIBVFSCORE_AUTOMOUNT_ROOTFS
+	select LIBVFSCORE_ROOTFS_9PFS
