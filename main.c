@@ -111,10 +111,10 @@ static int get_peer_address(int sockfd, char *buf, size_t len)
 }
 
 /*
- * Process command filename to result.
+ * Process command filename to result of size rlen.
  */
 
-static void process(const char *command_filename, char *result)
+static void process(const char *command_filename, char *result, size_t rlen)
 {
 	FILE *f;
 	char buffer[256];
@@ -192,17 +192,17 @@ static void process(const char *command_filename, char *result)
 		if (op == OP_HASH_GENERIC) {
 			unsigned char hash[crypto_generichash_BYTES];
 			crypto_generichash(hash, sizeof(hash), buffer, strlen(buffer), NULL, 0);
-			sodium_bin2hex(result, 256, hash, sizeof(hash));
+			sodium_bin2hex(result, rlen, hash, sizeof(hash));
 		}
 		else if (op == OP_HASH_SHA256) {
 			unsigned char hash[crypto_hash_sha256_BYTES];
 			crypto_hash_sha256(hash, buffer, strlen(buffer));
-			sodium_bin2hex(result, 256, hash, sizeof(hash));
+			sodium_bin2hex(result, rlen, hash, sizeof(hash));
 		}
 		else if (op == OP_HASH_SHA512) {
 			unsigned char hash[crypto_hash_sha512_BYTES];
 			crypto_hash_sha512(hash, buffer, strlen(buffer));
-			sodium_bin2hex(result, 256, hash, sizeof(hash));
+			sodium_bin2hex(result, rlen, hash, sizeof(hash));
 		}
 	}
 
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
 		printf("Received: %s\n", command_filename);
 
 		/* Process command filename. */
-		process(command_filename, result);
+		process(command_filename, result, 256);
 
 		/* Send output. */
 		n = write(client, &result, strlen(result));
