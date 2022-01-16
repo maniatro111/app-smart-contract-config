@@ -97,7 +97,7 @@ static int tcp_create_listener(unsigned short port, int backlog)
  * address format IP_address:port (e.g. 192.168.0.1:22).
  */
 
-static int get_peer_address(int sockfd, char *buf, size_t len)
+static int get_peer_address(int sockfd, char *buf, size_t __unused len)
 {
 	struct sockaddr_in addr;
 	socklen_t addrlen = sizeof(struct sockaddr_in);
@@ -192,17 +192,17 @@ static void process(const char *command_filename, char *result, size_t rlen)
 		/* Compute result. */
 		if (op == OP_HASH_GENERIC) {
 			unsigned char hash[crypto_generichash_BYTES];
-			crypto_generichash(hash, sizeof(hash), buffer, strlen(buffer), NULL, 0);
+			crypto_generichash(hash, sizeof(hash), (unsigned char *) buffer, strlen(buffer), NULL, 0);
 			sodium_bin2hex(result, rlen, hash, sizeof(hash));
 		}
 		else if (op == OP_HASH_SHA256) {
 			unsigned char hash[crypto_hash_sha256_BYTES];
-			crypto_hash_sha256(hash, buffer, strlen(buffer));
+			crypto_hash_sha256(hash, (unsigned char *) buffer, strlen(buffer));
 			sodium_bin2hex(result, rlen, hash, sizeof(hash));
 		}
 		else if (op == OP_HASH_SHA512) {
 			unsigned char hash[crypto_hash_sha512_BYTES];
-			crypto_hash_sha512(hash, buffer, strlen(buffer));
+			crypto_hash_sha512(hash, (unsigned char *) buffer, strlen(buffer));
 			sodium_bin2hex(result, rlen, hash, sizeof(hash));
 		}
 	}
@@ -217,6 +217,7 @@ static void process(const char *command_filename, char *result, size_t rlen)
 int main(int argc, char *argv[])
 {
 	int srv, client;
+	int rc;
 	unsigned short listen_port = DEFAULT_LISTEN_PORT;
 	char addrname[128];
 	char command_filename[256], result[256];
@@ -227,7 +228,11 @@ int main(int argc, char *argv[])
 	}
 
 	/* Initialize libsodium. */
-	sodium_init();
+	rc = sodium_init();
+	if (rc < 0) {
+		printf("Error initializing sodium.\n");
+		return -1;
+	}
 
 	srv = tcp_create_listener(listen_port, 1);
 	if (srv < 0)
