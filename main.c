@@ -212,7 +212,6 @@ static void process(const char *command_filename, char *result)
 int main(int argc, char *argv[])
 {
 	int srv, client;
-	ssize_t n;
 	unsigned short listen_port = DEFAULT_LISTEN_PORT;
 	char addrname[128];
 	char command_filename[256], result[256];
@@ -231,6 +230,8 @@ int main(int argc, char *argv[])
 
 	printf("Listening on port %hu...\n", listen_port);
 	while (1) {
+		ssize_t n;
+
 		client = accept(srv, NULL, 0);
 		DIE(client < 0, "accept");
 
@@ -238,9 +239,23 @@ int main(int argc, char *argv[])
 		printf("Received connection from %s\n", addrname);
 
 		/* Read command filename. */
-		read(client, &command_filename, sizeof(command_filename));
-		if (command_filename[strlen(command_filename)-1] == '\n')
-			command_filename[strlen(command_filename)-1] = '\0';
+		n = read(client, &command_filename, sizeof(command_filename)-1);
+		if (n < 0) {
+			printf("Error reading from socket.\n");
+			goto close;
+		}
+		if (n == 0) {
+			printf("Connection closed.\n");
+			goto close;
+		}
+
+		/*
+		 * Add NUL terminator to have a valid string.
+		 * Remove trailing newline if it's the case.
+		 */
+		command_filename[n] = '\0';
+		if (command_filename[n-1] == '\n')
+			command_filename[n-1] = '\0';
 		printf("Received: %s\n", command_filename);
 
 		/* Process command filename. */
@@ -251,6 +266,7 @@ int main(int argc, char *argv[])
 		DIE(n < 0, "write");
 		printf("Sent: %s\n", result);
 
+close:
 		/* Close connection */
 		close(client);
 	}
