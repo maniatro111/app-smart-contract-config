@@ -35,6 +35,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <sodium.h>
+
 #define DEFAULT_LISTEN_PORT 12345
 
 /* "shortcut" for struct sockaddr structure */
@@ -119,7 +121,10 @@ static void process(const char *command_filename, char *result)
 	enum {
 		OP_NONE = 0,
 		OP_ADD = 1,
-		OP_SUB = 2
+		OP_SUB = 2,
+		OP_HASH_GENERIC = 3,
+		OP_HASH_SHA256 = 4,
+		OP_HASH_SHA512 = 5,
 	} op = OP_NONE;
 	unsigned int num1, num2, res;
 
@@ -128,6 +133,9 @@ static void process(const char *command_filename, char *result)
 		printf("Error opening file %s\n", command_filename);
 		return;
 	}
+
+	/* Initialize result. */
+	result[0] = '\0';
 
 	/* Read operation. */
 	fgets(buffer, 256, f);
@@ -139,33 +147,64 @@ static void process(const char *command_filename, char *result)
 		printf("Operation: subtraction\n");
 		op = OP_SUB;
 	}
-	else {
-		/* Initialize result. */
-		result[0] = '\0';
-		return;
+	else if (strncmp(buffer, "hash_generic", 12) == 0) {
+		printf("Operation: hash generic\n");
+		op = OP_HASH_GENERIC;
+	}
+	else if (strncmp(buffer, "hash_sha256", 11) == 0) {
+		printf("Operation: hash sha256\n");
+		op = OP_HASH_SHA256;
+	}
+	else if (strncmp(buffer, "hash_sha512", 11) == 0) {
+		printf("Operation: hash sha512\n");
+		op = OP_HASH_SHA512;
 	}
 
-	/* Read 1st number. */
-	fgets(buffer, 256, f);
-	num1 = atoi(buffer);
+	if (op == OP_ADD || op == OP_SUB) {
+		/* Read 1st number. */
+		fgets(buffer, 256, f);
+		num1 = atoi(buffer);
 
-	/* Read 2nd number. */
-	fgets(buffer, 256, f);
-	num2 = atoi(buffer);
+		/* Read 2nd number. */
+		fgets(buffer, 256, f);
+		num2 = atoi(buffer);
 
-	/* Compute result. */
-	switch (op) {
-	case OP_ADD:
-		res = num1 + num2;
-		break;
-	case OP_SUB:
-		res = num1 - num2;
-		break;
-	default:
-		break;
+		/* Compute result. */
+		switch (op) {
+		case OP_ADD:
+			res = num1 + num2;
+			break;
+		case OP_SUB:
+			res = num1 - num2;
+			break;
+		default:
+			break;
+		}
+		sprintf(result, "%d", res);
 	}
+	else if (op == OP_HASH_GENERIC || op == OP_HASH_SHA256 || op == OP_HASH_SHA512) {
+		/* Read input message. */
+		fgets(buffer, 256, f);
+		if (buffer[strlen(buffer)-1] == '\n')
+			buffer[strlen(buffer)-1] = '\0';
 
-	sprintf(result, "%d", res);
+		/* Compute result. */
+		if (op == OP_HASH_GENERIC) {
+			unsigned char hash[crypto_generichash_BYTES];
+			crypto_generichash(hash, sizeof(hash), buffer, strlen(buffer), NULL, 0);
+			sodium_bin2hex(result, 256, hash, sizeof(hash));
+		}
+		else if (op == OP_HASH_SHA256) {
+			unsigned char hash[crypto_hash_sha256_BYTES];
+			crypto_hash_sha256(hash, buffer, strlen(buffer));
+			sodium_bin2hex(result, 256, hash, sizeof(hash));
+		}
+		else if (op == OP_HASH_SHA512) {
+			unsigned char hash[crypto_hash_sha512_BYTES];
+			crypto_hash_sha512(hash, buffer, strlen(buffer));
+			sodium_bin2hex(result, 256, hash, sizeof(hash));
+		}
+	}
 
 	fclose(f);
 }
@@ -182,6 +221,9 @@ int main(int argc, char *argv[])
 		printf("argument is %s\n", argv[1]);
 		listen_port = atoi(argv[1]);
 	}
+
+	/* Initialize libsodium. */
+	sodium_init();
 
 	srv = tcp_create_listener(listen_port, 1);
 	if (srv < 0)
