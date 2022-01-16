@@ -131,6 +131,7 @@ static void process(const char *command_filename, char *result, size_t rlen)
 	f = fopen(command_filename, "rt");
 	if (f == NULL) {
 		printf("Error opening file %s\n", command_filename);
+		sprintf(result, "No such file %s", command_filename);
 		return;
 	}
 
@@ -204,6 +205,10 @@ static void process(const char *command_filename, char *result, size_t rlen)
 			crypto_hash_sha512(hash, buffer, strlen(buffer));
 			sodium_bin2hex(result, rlen, hash, sizeof(hash));
 		}
+	}
+	else {
+		printf("Unknown operation (%s)", buffer);
+		sprintf(result, "Unknown operation (%s)", buffer);
 	}
 
 	fclose(f);
