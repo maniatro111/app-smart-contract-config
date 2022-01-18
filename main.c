@@ -125,6 +125,7 @@ static void process(const char *command_filename, char *result, size_t rlen)
 		OP_HASH_GENERIC = 3,
 		OP_HASH_SHA256 = 4,
 		OP_HASH_SHA512 = 5,
+		OP_EC_MULTIPLY = 6,
 	} op = OP_NONE;
 	unsigned int num1, num2, res;
 
@@ -159,6 +160,10 @@ static void process(const char *command_filename, char *result, size_t rlen)
 	else if (strncmp(buffer, "hash_sha512", 11) == 0) {
 		printf("Operation: hash sha512\n");
 		op = OP_HASH_SHA512;
+	}
+	else if (strncmp(buffer, "ec_multiply", 11) == 0) {
+		printf("Operation: ec_multiply\n");
+		op = OP_EC_MULTIPLY;
 	}
 
 	if (op == OP_ADD || op == OP_SUB) {
@@ -205,6 +210,22 @@ static void process(const char *command_filename, char *result, size_t rlen)
 			crypto_hash_sha512(hash, (unsigned char *) buffer, strlen(buffer));
 			sodium_bin2hex(result, rlen, hash, sizeof(hash));
 		}
+	}
+	else if (op == OP_EC_MULTIPLY) {
+		/* Read input message. A 32 bytes hex-encoded scalar */
+		char input[crypto_core_ed25519_SCALARBYTES*2];
+		fgets(input, crypto_core_ed25519_SCALARBYTES*2, f);
+
+		unsigned char s[crypto_core_ed25519_SCALARBYTES];
+
+		sodium_hex2bin(s, crypto_core_ed25519_SCALARBYTES,
+				input, crypto_core_ed25519_SCALARBYTES*2,
+				NULL, NULL, NULL);
+
+		unsigned char r[crypto_core_ed25519_BYTES];
+		crypto_scalarmult_ed25519_base_noclamp(r, s);
+
+		sodium_bin2hex(result, rlen, r, sizeof(r));
 	}
 	else {
 		printf("Unknown operation (%s)", buffer);
