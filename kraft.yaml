@@ -1,0 +1,24 @@
+---
+specification: '0.5'
+name: app-smart-contract-config
+unikraft:
+  version: '0.6'
+  kconfig:
+    - CONFIG_LIBUKLIBPARAM=y
+    - CONFIG_LIBUKARGPARSE=y
+    - CONFIG_LIBVFSCORE_AUTOMOUNT_ROOTFS=y
+    - CONFIG_LIBVFSCORE_ROOTFS_9PFS=y
+    - CONFIG_LIBVFSCORE_ROOTDEV="fs0"
+targets:
+  - architecture: x86_64
+    platform: kvm
+libraries:
+  lwip:
+    version: '0.6'
+  libsodium:
+    version: '0.6'
+  newlib:
+    version: '0.6'
+volumes:
+  fs0:
+    driver: 9pfs
